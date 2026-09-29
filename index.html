@@ -1,141 +1,116 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ecualizador SoundAlive</title>
-    <style>
-        :root {
-            --bg-color: #121212;
-            --text-color: #ffffff;
-            --accent-color: #007bff;
-            --panel-bg: #1e1e1e;
-            --border-color: #333;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        .container { width: 100%; max-width: 500px; }
-        h1 { font-size: 22px; font-weight: 500; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-        .section { background-color: var(--panel-bg); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .section-title { font-size: 14px; font-weight: bold; margin-bottom: 15px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
-        
-        .eq-container { display: flex; justify-content: space-between; height: 180px; align-items: flex-end; gap: 5px; margin-top: 10px; }
-        .slider-group { display: flex; flex-direction: column; align-items: center; width: 30px; }
-        .slider-group input[type="range"] { writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 8px; height: 120px; margin-bottom: 10px; }
-        .slider-label { font-size: 11px; color: #888; }
-        
-        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
-        .setting-row:last-child { border-bottom: none; }
-        select { background-color: #333; color: white; border: none; padding: 8px; border-radius: 6px; outline: none; }
-        
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent-color); }
-        input:checked + .slider:before { transform: translateX(20px); }
-        .setting-desc { font-size: 12px; color: #888; margin-top: 4px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoundAlive EQ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: #121212; color: #ffffff; padding: 16px; }
+    .card { background-color: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #aaaaaa; margin-bottom: 16px; }
+    
+    /* Contenedor del Ecualizador de 10 bandas */
+    .eq-container { display: flex; justify-content: space-between; height: 180px; align-items: flex-end; }
+    .band { display: flex; flex-direction: column; align-items: center; width: 8%; height: 100%; }
+    .slider-vertical {
+      writing-mode: bt-lr;
+      -webkit-appearance: slider-vertical;
+      width: 100%; height: 140px; background: transparent; cursor: pointer;
+    }
+    .band-label { font-size: 10px; color: #888888; margin-top: 8px; }
+
+    /* Estilos para Bass Boost y Surround */
+    .control-group { margin-top: 12px; }
+    .control-label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+    .slider-horizontal { width: 100%; accent-color: #007aff; cursor: pointer; }
+    
+    /* Reverberación */
+    select { width: 100%; padding: 10px; border-radius: 8px; background: #2a2a2a; color: white; border: none; margin-top: 8px; }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Efectos de sonido (SoundAlive)</h1>
-
-    <div class="section">
-        <div class="section-title">Ecualizador (10 Bandas)</div>
-        <div class="eq-container" id="eqContainer"></div>
-    </div>
-
-    <div class="section">
-        <div class="section-title">Reverberación</div>
-        <div class="setting-row">
-            <div>Activar Reverberación</div>
-            <label class="switch">
-                <input type="checkbox" id="reverbToggle">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <div class="setting-row">
-            <div>Tamaño de la sala</div>
-            <select id="roomSize" disabled>
-                <option value="1">Estudio pequeño</option>
-                <option value="2">Sala de estar</option>
-                <option value="3">Sala de conciertos</option>
-                <option value="4">Cueva / Estadio</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="section">
-        <div class="section-title">Avanzado</div>
-        <div class="setting-row">
-            <div>
-                <div>Control de sistema</div>
-                <div class="setting-desc">Aplicaciones que pueden modificar las configuraciones del sistema</div>
+  <!-- ECUALIZADOR (10 BANDAS) -->
+  <div class="card">
+    <h2>Ecualizador (10 Bandas)</h2>
+    <div class="eq-container">
+      <script>
+        const freqs = ['31', '62', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+        freqs.forEach((f, i) => {
+          document.write(`
+            <div class="band">
+              <input type="range" class="slider-vertical" min="-1500" max="1500" value="0" oninput="changeEq(${i}, this.value)">
+              <span class="band-label">${f}</span>
             </div>
-            <label class="switch">
-                <input type="checkbox" id="systemToggle" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-    </div>
-</div>
-
-<script>
-    const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-    const eqContainer = document.getElementById('eqContainer');
-    const reverbToggle = document.getElementById('reverbToggle');
-    const roomSize = document.getElementById('roomSize');
-
-    // Generar controles deslizantes
-    frequencies.forEach((freq, index) => {
-        const group = document.createElement('div');
-        group.className = 'slider-group';
-        
-        const slider = document.createElement('input');
-        slider.type = 'range';
-        slider.min = '-15';
-        slider.max = '15';
-        slider.value = '0';
-
-        const label = document.createElement('div');
-        label.className = 'slider-label';
-        label.innerText = freq >= 1000 ? (freq/1000) + 'k' : freq;
-
-        slider.addEventListener('input', (e) => {
-            const gainMb = parseInt(e.target.value) * 100; // Convertir a mB (-1500 a 1500)
-            if (window.AndroidAudio) {
-                window.AndroidAudio.setBandGain(index, gainMb);
-            }
+          `);
         });
+      </script>
+    </div>
+  </div>
 
-        group.appendChild(slider);
-        group.appendChild(label);
-        eqContainer.appendChild(group);
-    });
+  <!-- EFECTOS: BASS BOOST & SURROUND (NUEVO) -->
+  <div class="card">
+    <h2>Efectos de Audio</h2>
+    
+    <div class="control-group">
+      <div class="control-label">
+        <span>Potenciador de Bajos (Bass Boost)</span>
+        <span id="val-bass">0%</span>
+      </div>
+      <input type="range" class="slider-horizontal" min="0" max="100" value="0" oninput="changeBass(this.value)">
+    </div>
 
-    // Control de Reverb
-    function updateReverb() {
-        if (reverbToggle.checked) {
-            roomSize.disabled = false;
-            const preset = parseInt(roomSize.value);
-            if (window.AndroidAudio) window.AndroidAudio.setReverbPreset(preset);
-        } else {
-            roomSize.disabled = true;
-            if (window.AndroidAudio) window.AndroidAudio.setReverbPreset(0);
-        }
+    <div class="control-group" style="margin-top: 18px;">
+      <div class="control-label">
+        <span>Efecto Envolvente (Surround 3D)</span>
+        <span id="val-surround">0%</span>
+      </div>
+      <input type="range" class="slider-horizontal" min="0" max="100" value="0" oninput="changeSurround(this.value)">
+    </div>
+  </div>
+
+  <!-- REVERBERACIÓN -->
+  <div class="card">
+    <h2>Reverberación</h2>
+    <select onchange="changeReverb(this.value)">
+      <option value="0">Desactivado</option>
+      <option value="1">Habitación pequeña</option>
+      <option value="2">Habitación mediana</option>
+      <option value="3">Habitación grande</option>
+      <option value="4">Lobby / Salón</option>
+      <option value="5">Sana de conciertos</option>
+    </select>
+  </div>
+
+  <script>
+    function changeEq(band, gain) {
+      if (window.AndroidAudio && window.AndroidAudio.setBandGain) {
+        window.AndroidAudio.setBandGain(band, parseInt(gain));
+      }
     }
 
-    reverbToggle.addEventListener('change', updateReverb);
-    roomSize.addEventListener('change', updateReverb);
-</script>
+    function changeBass(val) {
+      document.getElementById('val-bass').innerText = val + '%';
+      if (window.AndroidAudio && window.AndroidAudio.setBassBoost) {
+        // Android recibe un rango de 0 a 1000
+        window.AndroidAudio.setBassBoost(parseInt(val) * 10);
+      }
+    }
+
+    function changeSurround(val) {
+      document.getElementById('val-surround').innerText = val + '%';
+      if (window.AndroidAudio && window.AndroidAudio.setVirtualizer) {
+        // Android recibe un rango de 0 a 1000
+        window.AndroidAudio.setVirtualizer(parseInt(val) * 10);
+      }
+    }
+
+    function changeReverb(preset) {
+      if (window.AndroidAudio && window.AndroidAudio.setReverbPreset) {
+        window.AndroidAudio.setReverbPreset(parseInt(preset));
+      }
+    }
+  </script>
 </body>
 </html>
