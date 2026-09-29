@@ -1,130 +1,242 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:background="#F8F9FA">
 
-    <!-- Encabezado Estilo SoundAlive -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="SoundAlive"
-        android:textColor="#FFFFFF"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Panel de Control de Audio"
-        android:textColor="#A0A0A0"
-        android:textSize="12sp"
-        android:layout_marginBottom="20dp" />
-
-    <!-- Tarjeta 1: Bandas del Ecualizador -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1C1C1E"
         android:orientation="vertical"
-        android:padding="16dp"
-        android:layout_marginBottom="16dp">
+        android:padding="20dp">
 
+        <!-- Título Superior -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ECUALIZADOR"
-            android:textColor="#00A8FF"
-            android:textSize="11sp"
+            android:text="CALIDAD Y EFECTOS DE SONIDO"
+            android:textColor="#212529"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
-        <!-- Contenedor de Frecuencias (Bandas Verticales) -->
+        <!-- Sección SOUNDALIVE -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SOUNDALIVE"
+            android:textColor="#868E96"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Ecualizador 7 Bandas -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="180dp"
-            android:gravity="center"
-            android:orientation="horizontal">
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:elevation="2dp"
+            android:layout_marginBottom="20dp">
 
-            <!-- Banda 62 Hz -->
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <SeekBar
-                    android:id="@+id/band_62hz"
-                    android:layout_width="130dp"
-                    android:layout_height="wrap_content"
-                    android:rotation="270"
-                    android:splitTrack="false" />
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="62Hz"
-                    android:textColor="#D0D0D0"
-                    android:textSize="11sp"
-                    android:layout_marginTop="8dp" />
+                    android:text="Ecualizador"
+                    android:textColor="#212529"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:background="#E9ECEF"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
+                    android:text="BÁSICO"
+                    android:textColor="#339AF0"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <!-- Rejilla con las 7 Bandas del Ecualizador -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <!-- 60 Hz -->
+                <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <SeekBar android:id="@+id/band_60" android:layout_width="140dp" android:layout_height="wrap_content" android:rotation="270" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="60" android:textColor="#495057" android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- 150 Hz -->
+                <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <SeekBar android:id="@+id/band_150" android:layout_width="140dp" android:layout_height="wrap_content" android:rotation="270" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="150" android:textColor="#495057" android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- 400 Hz -->
+                <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <SeekBar android:id="@+id/band_400" android:layout_width="140dp" android:layout_height="wrap_content" android:rotation="270" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="400" android:textColor="#495057" android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- 1k Hz -->
+                <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <SeekBar android:id="@+id/band_1k" android:layout_width="140dp" android:layout_height="wrap_content" android:rotation="270" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1k" android:textColor="#495057" android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- 3k Hz -->
+                <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <SeekBar android:id="@+id/band_3k" android:layout_width="140dp" android:layout_height="wrap_content" android:rotation="270" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3k" android:textColor="#495057" android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- 8k Hz -->
+                <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <SeekBar android:id="@+id/band_8k" android:layout_width="140dp" android:layout_height="wrap_content" android:rotation="270" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="8k" android:textColor="#495057" android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- 16k Hz -->
+                <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                    <SeekBar android:id="@+id/band_16k" android:layout_width="140dp" android:layout_height="wrap_content" android:rotation="270" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="16k" android:textColor="#495057" android:textSize="11sp" />
+                </LinearLayout>
+
             </LinearLayout>
+        </LinearLayout>
+
+        <!-- Interruptores de Efectos Especiales -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:elevation="2dp">
+
+            <!-- Surround -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_toStartOf="@id/switch_surround">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Surround"
+                        android:textColor="#212529"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Recrea el efecto de un sonido envolvente enriquecido."
+                        android:textColor="#868E96"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switch_surround"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true" />
+            </RelativeLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E9ECEF" />
+
+            <!-- Tube Amp Pro -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_toStartOf="@id/switch_tube">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tube Amp Pro"
+                        android:textColor="#212529"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Simula el timbre suave de un amplificador de tubos."
+                        android:textColor="#868E96"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switch_tube"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true" />
+            </RelativeLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E9ECEF" />
+
+            <!-- Concert Hall -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_toStartOf="@id/switch_concert">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Concert hall"
+                        android:textColor="#212529"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Simula la reverberación de una sala de conciertos."
+                        android:textColor="#868E96"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switch_concert"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true" />
+            </RelativeLayout>
 
         </LinearLayout>
-    </LinearLayout>
-
-    <!-- Tarjeta 2: Efectos SoundAlive -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#1C1C1E"
-        android:orientation="vertical"
-        android:padding="16dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="EFECTOS SOUNDALIVE"
-            android:textColor="#00A8FF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Potenciador de Bajos (Bass Boost) -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Potenciador de Bajos (Bass)"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp" />
-
-        <SeekBar
-            android:id="@+id/seek_bass"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="1000"
-            android:paddingTop="8dp"
-            android:paddingBottom="16dp" />
-
-        <!-- Efecto Envolvente (Surround 3D) -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Efecto Envolvente (3D)"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp" />
-
-        <SeekBar
-            android:id="@+id/seek_surround"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="1000"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp" />
 
     </LinearLayout>
-
-</LinearLayout>
+</ScrollView>
