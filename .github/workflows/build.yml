@@ -23,7 +23,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Instalar Capacitor, Inyectar Puente Nativo Seguro y Permisos
+      - name: Instalar Capacitor, Inyectar Puente Nativo Completo y Permisos
         run: |
           mkdir -p www
           cp index.html www/
@@ -33,22 +33,31 @@ jobs:
           npx cap add android
           npx cap sync android
 
-          # 1. Inyectar permisos de audio y ajustes de sistema en el AndroidManifest
+          # 1. Inyectar permisos de audio en AndroidManifest
           sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" \/>\n    <uses-permission android:name="android.permission.WRITE_SETTINGS" \/>' android/app/src/main/AndroidManifest.xml
 
-          # 2. Crear MainActivity.java nativo y seguro
+          # 2. Crear MainActivity.java con 10 Bandas, BassBoost, Virtualizer y Reverb
           cat << 'EOF' > android/app/src/main/java/com/audio/soundalivelite/MainActivity.java
           package com.audio.soundalivelite;
 
+          import android.os.Build;
           import android.os.Bundle;
+          import android.media.audiofx.DynamicsProcessing;
           import android.media.audiofx.Equalizer;
+          import android.media.audiofx.BassBoost;
+          import android.media.audiofx.Virtualizer;
           import android.media.audiofx.PresetReverb;
           import android.webkit.JavascriptInterface;
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
               private Equalizer equalizer = null;
+              private DynamicsProcessing dynamicsProcessing = null;
+              private BassBoost bassBoost = null;
+              private Virtualizer virtualizer = null;
               private PresetReverb presetReverb = null;
+
+              private final float[] frequencies = {31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f};
 
               @Override
               public void onStart() {
@@ -60,14 +69,57 @@ jobs:
                   try {
                       if (getBridge() != null && getBridge().getWebView() != null) {
                           getBridge().getWebView().addJavascriptInterface(new Object() {
+
                               @JavascriptInterface
                               public void setBandGain(int bandIndex, int gainMb) {
                                   try {
+                                      float gainDb = gainMb / 100.0f;
+
+                                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                          if (dynamicsProcessing == null) {
+                                              initDynamicsProcessing();
+                                          }
+                                          if (dynamicsProcessing != null && bandIndex >= 0 && bandIndex < 10) {
+                                              DynamicsProcessing.EqBand band = new DynamicsProcessing.EqBand(true, frequencies[bandIndex], gainDb);
+                                              dynamicsProcessing.setPreEqBandAllChannelsTo(bandIndex, band);
+                                              return;
+                                          }
+                                      }
+
                                       if (equalizer == null) {
                                           equalizer = new Equalizer(0, 0);
                                           equalizer.setEnabled(true);
                                       }
-                                      equalizer.setBandLevel((short) bandIndex, (short) gainMb);
+                                      short numBands = equalizer.getNumberOfBands();
+                                      if (bandIndex < numBands) {
+                                          equalizer.setBandLevel((short) bandIndex, (short) gainMb);
+                                      }
+                                  } catch (Exception e) {
+                                      e.printStackTrace();
+                                  }
+                              }
+
+                              @JavascriptInterface
+                              public void setBassBoost(int strength) {
+                                  try {
+                                      if (bassBoost == null) {
+                                          bassBoost = new BassBoost(0, 0);
+                                      }
+                                      bassBoost.setEnabled(strength > 0);
+                                      bassBoost.setStrength((short) strength);
+                                  } catch (Exception e) {
+                                      e.printStackTrace();
+                                  }
+                              }
+
+                              @JavascriptInterface
+                              public void setVirtualizer(int strength) {
+                                  try {
+                                      if (virtualizer == null) {
+                                          virtualizer = new Virtualizer(0, 0);
+                                      }
+                                      virtualizer.setEnabled(strength > 0);
+                                      virtualizer.setStrength((short) strength);
                                   } catch (Exception e) {
                                       e.printStackTrace();
                                   }
@@ -79,11 +131,12 @@ jobs:
                                       if (presetReverb == null) {
                                           presetReverb = new PresetReverb(0, 0);
                                       }
+
                                       if (preset == 0) {
                                           presetReverb.setEnabled(false);
                                       } else {
-                                          presetReverb.setEnabled(true);
                                           presetReverb.setPreset((short) preset);
+                                          presetReverb.setEnabled(true);
                                       }
                                   } catch (Exception e) {
                                       e.printStackTrace();
@@ -93,6 +146,34 @@ jobs:
                       }
                   } catch (Exception e) {
                       e.printStackTrace();
+                  }
+              }
+
+              private void initDynamicsProcessing() {
+                  try {
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                          DynamicsProcessing.Config.Builder builder = new DynamicsProcessing.Config.Builder(
+                                  DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                                  2,
+                                  true, 10,
+                                  false, 0,
+                                  false, 0,
+                                  false
+                          );
+
+                          DynamicsProcessing.Eq eq = new DynamicsProcessing.Eq(true, true, 10);
+                          for (int i = 0; i < 10; i++) {
+                              DynamicsProcessing.EqBand band = new DynamicsProcessing.EqBand(true, frequencies[i], 0.0f);
+                              eq.setBand(i, band);
+                          }
+                          builder.setPreEqAllChannelsTo(eq);
+
+                          dynamicsProcessing = new DynamicsProcessing(0, 0, builder.build());
+                          dynamicsProcessing.setEnabled(true);
+                      }
+                  } catch (Exception e) {
+                      e.printStackTrace();
+                      dynamicsProcessing = null;
                   }
               }
           }
