@@ -23,7 +23,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Instalar Capacitor, Inyectar Puente Nativo Completo y Permisos
+      - name: Instalar Capacitor y Configurar Componentes de Sistema
         run: |
           mkdir -p www
           cp index.html www/
@@ -33,35 +33,132 @@ jobs:
           npx cap add android
           npx cap sync android
 
-          # 1. Inyectar permisos de audio en AndroidManifest
-          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" \/>\n    <uses-permission android:name="android.permission.WRITE_SETTINGS" \/>' android/app/src/main/AndroidManifest.xml
+          # 1. Configurar AndroidManifest con permisos de inicio y respuesta a reproductores de música
+          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" \/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" \/>\n    <uses-permission android:name="android.permission.WRITE_SETTINGS" \/>' android/app/src/main/AndroidManifest.xml
 
-          # 2. Crear MainActivity.java con 10 Bandas, BassBoost, Virtualizer y Reverb
+          # Inyectar Intent-Filter de ecualizador de sistema y Receiver de boot
+          sed -i '/<activity android:name="\.MainActivity"/a \            <intent-filter>\n                <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" \/>\n                <category android:category="android.intent.category.DEFAULT" \/>\n            <\/intent-filter>' android/app/src/main/AndroidManifest.xml
+          
+          sed -i '/<\/application>/i \        <receiver android:name="com.audio.soundalivelite.BootReceiver" android:enabled="true" android:exported="true">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED" \/>\n            <\/intent-filter>\n        <\/receiver>' android/app/src/main/AndroidManifest.xml
+
+          # 2. Crear BootReceiver.java para restaurar audio en segundo plano tras reiniciar
+          cat << 'EOF' > android/app/src/main/java/com/audio/soundalivelite/BootReceiver.java
+          package com.audio.soundalivelite;
+
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.os.Build;
+          import android.media.audiofx.DynamicsProcessing;
+          import android.media.audiofx.Equalizer;
+          import android.media.audiofx.BassBoost;
+          import android.media.audiofx.Virtualizer;
+          import android.media.audiofx.EnvironmentalReverb;
+
+          public class BootReceiver extends BroadcastReceiver {
+              private static final float[] FREQS = {31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f};
+
+              @Override
+              public void onReceive(Context context, Intent intent) {
+                  if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+                      applySavedAudioEffects(context);
+                  }
+              }
+
+              public static void applySavedAudioEffects(Context context) {
+                  try {
+                      SharedPreferences prefs = context.getSharedPreferences("SoundAlivePrefs", Context.MODE_PRIVATE);
+
+                      // 1. Restaurar EQ
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                          try {
+                              DynamicsProcessing.Config.Builder builder = new DynamicsProcessing.Config.Builder(
+                                      DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION, 2, true, 10, false, 0, false, 0, false);
+                              DynamicsProcessing.Eq eq = new DynamicsProcessing.Eq(true, true, 10);
+                              for (int i = 0; i < 10; i++) {
+                                  int gainMb = prefs.getInt("eq_band_" + i, 0);
+                                  eq.setBand(i, new DynamicsProcessing.EqBand(true, FREQS[i], gainMb / 100.0f));
+                              }
+                              builder.setPreEqAllChannelsTo(eq);
+                              DynamicsProcessing dp = new DynamicsProcessing(0, 0, builder.build());
+                              dp.setEnabled(true);
+                          } catch (Exception ignored) {}
+                      } else {
+                          try {
+                              Equalizer eq = new Equalizer(0, 0);
+                              eq.setEnabled(true);
+                              short bands = eq.getNumberOfBands();
+                              for (short i = 0; i < bands; i++) {
+                                  eq.setBandLevel(i, (short) prefs.getInt("eq_band_" + i, 0));
+                              }
+                          } catch (Exception ignored) {}
+                      }
+
+                      // 2. Restaurar Bass Boost
+                      int bass = prefs.getInt("bass_boost", 0);
+                      if (bass > 0) {
+                          BassBoost bb = new BassBoost(0, 0);
+                          bb.setEnabled(true);
+                          bb.setStrength((short) bass);
+                      }
+
+                      // 3. Restaurar Virtualizer
+                      int surround = prefs.getInt("virtualizer", 0);
+                      if (surround > 0) {
+                          Virtualizer virt = new Virtualizer(0, 0);
+                          virt.setEnabled(true);
+                          virt.setStrength((short) surround);
+                      }
+
+                      // 4. Restaurar Reverb
+                      boolean reverb = prefs.getBoolean("env_reverb", false);
+                      if (reverb) {
+                          EnvironmentalReverb rev = new EnvironmentalReverb(0, 0);
+                          rev.setRoomLevel((short) -1000);
+                          rev.setDecayTime(2000);
+                          rev.setEnabled(true);
+                      }
+                  } catch (Exception e) {
+                      e.printStackTrace();
+                  }
+              }
+          }
+          EOF
+
+          # 3. Crear MainActivity.java con persistencia SharedPreferences y puente JavaScript
           cat << 'EOF' > android/app/src/main/java/com/audio/soundalivelite/MainActivity.java
           package com.audio.soundalivelite;
 
+          import android.content.Context;
+          import android.content.SharedPreferences;
           import android.os.Build;
           import android.os.Bundle;
           import android.media.audiofx.DynamicsProcessing;
           import android.media.audiofx.Equalizer;
           import android.media.audiofx.BassBoost;
           import android.media.audiofx.Virtualizer;
-          import android.media.audiofx.PresetReverb;
+          import android.media.audiofx.EnvironmentalReverb;
           import android.webkit.JavascriptInterface;
           import com.getcapacitor.BridgeActivity;
+          import org.json.JSONArray;
+          import org.json.JSONObject;
 
           public class MainActivity extends BridgeActivity {
               private Equalizer equalizer = null;
               private DynamicsProcessing dynamicsProcessing = null;
               private BassBoost bassBoost = null;
               private Virtualizer virtualizer = null;
-              private PresetReverb presetReverb = null;
+              private EnvironmentalReverb envReverb = null;
+              private SharedPreferences prefs;
 
               private final float[] frequencies = {31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f};
 
               @Override
               public void onStart() {
                   super.onStart();
+                  prefs = getSharedPreferences("SoundAlivePrefs", Context.MODE_PRIVATE);
+                  BootReceiver.applySavedAudioEffects(this);
                   setupAudioBridge();
               }
 
@@ -73,12 +170,11 @@ jobs:
                               @JavascriptInterface
                               public void setBandGain(int bandIndex, int gainMb) {
                                   try {
+                                      prefs.edit().putInt("eq_band_" + bandIndex, gainMb).apply();
                                       float gainDb = gainMb / 100.0f;
 
                                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                          if (dynamicsProcessing == null) {
-                                              initDynamicsProcessing();
-                                          }
+                                          if (dynamicsProcessing == null) initDynamicsProcessing();
                                           if (dynamicsProcessing != null && bandIndex >= 0 && bandIndex < 10) {
                                               DynamicsProcessing.EqBand band = new DynamicsProcessing.EqBand(true, frequencies[bandIndex], gainDb);
                                               dynamicsProcessing.setPreEqBandAllChannelsTo(bandIndex, band);
@@ -94,87 +190,79 @@ jobs:
                                       if (bandIndex < numBands) {
                                           equalizer.setBandLevel((short) bandIndex, (short) gainMb);
                                       }
-                                  } catch (Exception e) {
-                                      e.printStackTrace();
-                                  }
+                                  } catch (Exception e) { e.printStackTrace(); }
                               }
 
                               @JavascriptInterface
                               public void setBassBoost(int strength) {
                                   try {
-                                      if (bassBoost == null) {
-                                          bassBoost = new BassBoost(0, 0);
-                                      }
+                                      prefs.edit().putInt("bass_boost", strength).apply();
+                                      if (bassBoost == null) bassBoost = new BassBoost(0, 0);
                                       bassBoost.setEnabled(strength > 0);
                                       bassBoost.setStrength((short) strength);
-                                  } catch (Exception e) {
-                                      e.printStackTrace();
-                                  }
+                                  } catch (Exception e) { e.printStackTrace(); }
                               }
 
                               @JavascriptInterface
                               public void setVirtualizer(int strength) {
                                   try {
-                                      if (virtualizer == null) {
-                                          virtualizer = new Virtualizer(0, 0);
-                                      }
+                                      prefs.edit().putInt("virtualizer", strength).apply();
+                                      if (virtualizer == null) virtualizer = new Virtualizer(0, 0);
                                       virtualizer.setEnabled(strength > 0);
                                       virtualizer.setStrength((short) strength);
-                                  } catch (Exception e) {
-                                      e.printStackTrace();
-                                  }
+                                  } catch (Exception e) { e.printStackTrace(); }
                               }
 
                               @JavascriptInterface
-                              public void setReverbPreset(int preset) {
+                              public void setEnvironmentalReverb(boolean enabled) {
                                   try {
-                                      if (presetReverb == null) {
-                                          presetReverb = new PresetReverb(0, 0);
+                                      prefs.edit().putBoolean("env_reverb", enabled).apply();
+                                      if (envReverb == null) {
+                                          envReverb = new EnvironmentalReverb(0, 0);
+                                          envReverb.setRoomLevel((short) -1000);
+                                          envReverb.setDecayTime(2000);
                                       }
+                                      envReverb.setEnabled(enabled);
+                                  } catch (Exception e) { e.printStackTrace(); }
+                              }
 
-                                      if (preset == 0) {
-                                          presetReverb.setEnabled(false);
-                                      } else {
-                                          presetReverb.setPreset((short) preset);
-                                          presetReverb.setEnabled(true);
+                              @JavascriptInterface
+                              public String getSavedState() {
+                                  try {
+                                      JSONObject obj = new JSONObject();
+                                      JSONArray bands = new JSONArray();
+                                      for (int i = 0; i < 10; i++) {
+                                          bands.put(prefs.getInt("eq_band_" + i, 0));
                                       }
+                                      obj.put("bands", bands);
+                                      obj.put("bass", prefs.getInt("bass_boost", 0));
+                                      obj.put("surround", prefs.getInt("virtualizer", 0));
+                                      obj.put("reverb", prefs.getBoolean("env_reverb", false));
+                                      return obj.toString();
                                   } catch (Exception e) {
-                                      e.printStackTrace();
+                                      return "{}";
                                   }
                               }
                           }, "AndroidAudio");
                       }
-                  } catch (Exception e) {
-                      e.printStackTrace();
-                  }
+                  } catch (Exception e) { e.printStackTrace(); }
               }
 
               private void initDynamicsProcessing() {
                   try {
                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                           DynamicsProcessing.Config.Builder builder = new DynamicsProcessing.Config.Builder(
-                                  DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-                                  2,
-                                  true, 10,
-                                  false, 0,
-                                  false, 0,
-                                  false
-                          );
-
+                                  DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION, 2, true, 10, false, 0, false, 0, false);
                           DynamicsProcessing.Eq eq = new DynamicsProcessing.Eq(true, true, 10);
                           for (int i = 0; i < 10; i++) {
-                              DynamicsProcessing.EqBand band = new DynamicsProcessing.EqBand(true, frequencies[i], 0.0f);
-                              eq.setBand(i, band);
+                              int gainMb = prefs.getInt("eq_band_" + i, 0);
+                              eq.setBand(i, new DynamicsProcessing.EqBand(true, frequencies[i], gainMb / 100.0f));
                           }
                           builder.setPreEqAllChannelsTo(eq);
-
                           dynamicsProcessing = new DynamicsProcessing(0, 0, builder.build());
                           dynamicsProcessing.setEnabled(true);
                       }
-                  } catch (Exception e) {
-                      e.printStackTrace();
-                      dynamicsProcessing = null;
-                  }
+                  } catch (Exception e) { dynamicsProcessing = null; }
               }
           }
           EOF
