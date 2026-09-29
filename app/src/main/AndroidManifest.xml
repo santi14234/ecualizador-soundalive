@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.sec.android.app.soundalive">
 
-    <!-- Permisos necesarios para gestionar el ecualizador y el auto-arranque -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:allowBackup="false"
@@ -13,28 +13,19 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
-        <!-- Actividad principal: Oculta del menú (sin LAUNCHER) y vinculada al panel de audio del sistema -->
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="portrait"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        <activity android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
-                <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
-                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Receptor en segundo plano para reactivar los ajustes al encender el J2 Core -->
-        <receiver
-            android:name=".BootReceiver"
+        <!-- Registrar el servicio persistente -->
+        <service 
+            android:name=".SoundAliveService"
             android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
+            android:exported="false" />
 
     </application>
-
 </manifest>
