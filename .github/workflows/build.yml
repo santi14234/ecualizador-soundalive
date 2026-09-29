@@ -33,77 +33,66 @@ jobs:
           npx cap add android
           npx cap sync android
 
-          # 1. Inyectar permisos de audio y ajustes de sistema
+          # 1. Inyectar permisos de audio y ajustes de sistema en el AndroidManifest
           sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" \/>\n    <uses-permission android:name="android.permission.WRITE_SETTINGS" \/>' android/app/src/main/AndroidManifest.xml
 
-          # 2. Crear MainActivity.kt ultra seguro (protegido contra cierres)
-          rm -f android/app/src/main/java/com/audio/soundalivelite/MainActivity.java
-          cat << 'EOF' > android/app/src/main/java/com/audio/soundalivelite/MainActivity.kt
-          package com.audio.soundalivelite
+          # 2. Crear MainActivity.java nativo y seguro
+          cat << 'EOF' > android/app/src/main/java/com/audio/soundalivelite/MainActivity.java
+          package com.audio.soundalivelite;
 
-          import android.os.Bundle
-          import android.media.audiofx.Equalizer
-          import android.media.audiofx.PresetReverb
-          import android.webkit.JavascriptInterface
-          import com.getcapacitor.BridgeActivity
+          import android.os.Bundle;
+          import android.media.audiofx.Equalizer;
+          import android.media.audiofx.PresetReverb;
+          import android.webkit.JavascriptInterface;
+          import com.getcapacitor.BridgeActivity;
 
-          class MainActivity : BridgeActivity() {
-              private var equalizer: Equalizer? = null
-              private var presetReverb: PresetReverb? = null
+          public class MainActivity extends BridgeActivity {
+              private Equalizer equalizer = null;
+              private PresetReverb presetReverb = null;
 
-              override fun onStart() {
-                  super.onStart()
-                  setupAudioBridge()
+              @Override
+              public void onStart() {
+                  super.onStart();
+                  setupAudioBridge();
               }
 
-              private fun setupAudioBridge() {
+              private void setupAudioBridge() {
                   try {
-                      bridge?.webView?.addJavascriptInterface(object {
-                          @JavascriptInterface
-                          fun setBandGain(bandIndex: Int, gainMb: Int) {
-                              try {
-                                  if (equalizer == null) {
-                                      equalizer = Equalizer(0, 0).apply { enabled = true }
+                      if (getBridge() != null && getBridge().getWebView() != null) {
+                          getBridge().getWebView().addJavascriptInterface(new Object() {
+                              @JavascriptInterface
+                              public void setBandGain(int bandIndex, int gainMb) {
+                                  try {
+                                      if (equalizer == null) {
+                                          equalizer = new Equalizer(0, 0);
+                                          equalizer.setEnabled(true);
+                                      }
+                                      equalizer.setBandLevel((short) bandIndex, (short) gainMb);
+                                  } catch (Exception e) {
+                                      e.printStackTrace();
                                   }
-                                  equalizer?.setBandLevel(bandIndex.toShort(), gainMb.toShort())
-                              } catch (e: Exception) {
-                                  e.printStackTrace()
                               }
-                          }
 
-                          @JavascriptInterface
-                          fun setReverbPreset(preset: Int) {
-                              try {
-                                  if (presetReverb == null) {
-                                      presetReverb = PresetReverb(0, 0).apply { enabled = true }
+                              @JavascriptInterface
+                              public void setReverbPreset(int preset) {
+                                  try {
+                                      if (presetReverb == null) {
+                                          presetReverb = new PresetReverb(0, 0);
+                                      }
+                                      if (preset == 0) {
+                                          presetReverb.setEnabled(false);
+                                      } else {
+                                          presetReverb.setEnabled(true);
+                                          presetReverb.setPreset((short) preset);
+                                      }
+                                  } catch (Exception e) {
+                                      e.printStackTrace();
                                   }
-                                  if (preset == 0) {
-                                      presetReverb?.enabled = false
-                                  } else {
-                                      presetReverb?.enabled = true
-                                      presetReverb?.preset = preset.toShort()
-                                  }
-                              } catch (e: Exception) {
-                                  e.printStackTrace()
                               }
-                          }
-                      }, "AndroidAudio")
-                  } catch (e: Exception) {
-                      e.printStackTrace()
-                  }
-              }
-          }
-          EOF
-
-          # 3. Forzar dependencias estables de Kotlin
-          cat << 'EOF' >> android/build.gradle
-
-          allprojects {
-              configurations.all {
-                  resolutionStrategy {
-                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.25'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.25'
-                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.25'
+                          }, "AndroidAudio");
+                      }
+                  } catch (Exception e) {
+                      e.printStackTrace();
                   }
               }
           }
