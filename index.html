@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecualizador - Estilo SoundAlive</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --accent-color: #007bff;
+            --panel-bg: #1e1e1e;
+            --border-color: #333;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .section {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        /* Controles de Audio */
+        input[type="file"] {
+            margin-bottom: 15px;
+            width: 100%;
+        }
+        audio {
+            width: 100%;
+            margin-bottom: 10px;
+            outline: none;
+        }
+        /* Ecualizador de 10 Bandas */
+        .eq-container {
+            display: flex;
+            justify-content: space-between;
+            height: 180px;
+            align-items: flex-end;
+            gap: 5px;
+            margin-top: 20px;
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 30px;
+        }
+        .slider-group input[type="range"] {
+            writing-mode: bt-lr; /* IE */
+            -webkit-appearance: slider-vertical; /* WebKit */
+            width: 8px;
+            height: 120px;
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            font-size: 11px;
+            color: #888;
+        }
+        /* Opciones de Reverb y Sistema */
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+        select {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            outline: none;
+        }
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #555;
+            transition: .4s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--accent-color);
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        .setting-desc {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Efectos de sonido</h1>
+
+    <div class="section">
+        <div class="section-title">Reproductor</div>
+        <input type="file" id="audioUpload" accept="audio/*">
+        <audio id="audioPlayer" controls></audio>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Ecualizador (10 Bandas)</div>
+        <div class="eq-container" id="eqContainer">
+            <!-- Los sliders se generan con JavaScript -->
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">SoundAlive - Reverberación</div>
+        
+        <div class="setting-row">
+            <div>
+                <div>Activar Reverberación</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="reverbToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="setting-row">
+            <div>Tamaño de la sala</div>
+            <select id="roomSize" disabled>
+                <option value="0.5">Estudio pequeño</option>
+                <option value="1.5">Sala de estar</option>
+                <option value="3.0">Sala de conciertos</option>
+                <option value="5.0">Cueva / Estadio</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Avanzado</div>
+        <div class="setting-row">
+            <div>
+                <div>Control de sistema</div>
+                <div class="setting-desc">Aplicaciones que pueden modificar las configuraciones del sistema</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="systemToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Frecuencias para 10 bandas estándar
+    const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+    const eqContainer = document.getElementById('eqContainer');
+    
+    // Elementos del DOM
+    const audioPlayer = document.getElementById('audioPlayer');
+    const audioUpload = document.getElementById('audioUpload');
+    const reverbToggle = document.getElementById('reverbToggle');
+    const roomSize = document.getElementById('roomSize');
+    const systemToggle = document.getElementById('systemToggle');
+
+    // Variables de Audio
+    let audioCtx;
+    let sourceNode;
+    let eqNodes = [];
+    let convolverNode;
+    let dryGainNode;
+    let wetGainNode;
+    let isInitialized = false;
+
+    // Crear la interfaz del ecualizador
+    frequencies.forEach(freq => {
+        const group = document.createElement('div');
+        group.className = 'slider-group';
+        
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = '-15';
+        slider.max = '15';
+        slider.value = '0';
+        slider.dataset.freq = freq;
+
+        // Etiqueta (Ej: 1k en lugar de 1000)
+        const label = document.createElement('div');
+        label.className = 'slider-label';
+        label.innerText = freq >= 1000 ? (freq/1000) + 'k' : freq;
+
+        slider.addEventListener('input', (e) => {
+            const index = frequencies.indexOf(freq);
+            if (eqNodes[index]) {
+                eqNodes[index].gain.value = e.target.value;
+            }
+        });
+
+        group.appendChild(slider);
+        group.appendChild(label);
+        eqContainer.appendChild(group);
+    });
+
+    // Función para generar la reverberación (Impulse Response)
+    function createReverbBuffer(duration) {
+        const sampleRate = audioCtx.sampleRate;
+        const length = sampleRate * duration;
+        const impulse = audioCtx.createBuffer(2, length, sampleRate);
+        const left = impulse.getChannelData(0);
+        const right = impulse.getChannelData(1);
+        
+        // Generar ruido blanco con decaimiento exponencial para simular la sala
+        for (let i = 0; i < length; i++) {
+            const decay = Math.exp(-i / (sampleRate * (duration / 3)));
+            left[i] = (Math.random() * 2 - 1) * decay;
+            right[i] = (Math.random() * 2 - 1) * decay;
+        }
+        return impulse;
+    }
+
+    // Inicializar el sistema de audio
+    function initAudio() {
+        if (isInitialized) return;
+        
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        sourceNode = audioCtx.createMediaElementSource(audioPlayer);
+
+        // Nodos para Reverb (Ruta paralela: Dry y Wet)
+        convolverNode = audioCtx.createConvolver();
+        dryGainNode = audioCtx.createGain();
+        wetGainNode = audioCtx.createGain();
+        
+        dryGainNode.gain.value = 1; // Audio original
+        wetGainNode.gain.value = 0; // Audio con reverb (apagado por defecto)
+
+        // Crear los 10 nodos de ecualización
+        let prevNode = sourceNode;
+        frequencies.forEach(freq => {
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'peaking';
+            filter.frequency.value = freq;
+            filter.Q.value = 1.41;
+            filter.gain.value = 0;
+            
+            prevNode.connect(filter);
+            prevNode = filter;
+            eqNodes.push(filter);
+        });
+
+        // Conectar el final del EQ a las rutas Dry y Wet
+        prevNode.connect(dryGainNode);
+        prevNode.connect(convolverNode);
+        convolverNode.connect(wetGainNode);
+
+        // Conectar al destino final (altavoces)
+        dryGainNode.connect(audioCtx.destination);
+        wetGainNode.connect(audioCtx.destination);
+
+        isInitialized = true;
+    }
+
+    // Cargar archivo
+    audioUpload.addEventListener('change', function(e) {
+        const file = this.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+            initAudio();
+        }
+    });
+
+    // Control de Reverberación
+    function updateReverb() {
+        if (!isInitialized) return;
+        
+        if (reverbToggle.checked) {
+            const duration = parseFloat(roomSize.value);
+            convolverNode.buffer = createReverbBuffer(duration);
+            wetGainNode.gain.value = 0.5; // Mezcla del efecto
+            roomSize.disabled = false;
+        } else {
+            wetGainNode.gain.value = 0;
+            roomSize.disabled = true;
+        }
+    }
+
+    reverbToggle.addEventListener('change', updateReverb);
+    roomSize.addEventListener('change', updateReverb);
+
+    // Reproducción (para asegurar que el contexto de audio arranque en navegadores modernos)
+    audioPlayer.addEventListener('play', () => {
+        initAudio();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    });
+
+    // Toggle visual del sistema (No tiene función real en navegador, solo diseño)
+    systemToggle.addEventListener('change', (e) => {
+        if(e.target.checked) {
+            alert("En una app web, esta opción es visual. Para modificar el audio real de todo el sistema Android se requiere crear un módulo Magisk o una app root.");
+        }
+    });
+</script>
+</body>
+</html>
