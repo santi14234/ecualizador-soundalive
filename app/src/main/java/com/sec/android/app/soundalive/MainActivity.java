@@ -3,17 +3,19 @@ package com.sec.android.app.soundalive;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.media.audiofx.BassBoost;
+import android.media.audiofx.EnvironmentalReverb;
 import android.media.audiofx.Equalizer;
 import android.media.audiofx.Virtualizer;
 import android.os.Bundle;
+import android.widget.CompoundButton;
 import android.widget.SeekBar;
+import android.widget.Switch;
 
 public class MainActivity extends Activity {
 
     private Equalizer mEqualizer;
-    private BassBoost mBassBoost;
     private Virtualizer mVirtualizer;
+    private EnvironmentalReverb mReverb;
     private SharedPreferences prefs;
 
     @Override
@@ -24,109 +26,114 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("SoundAlive_Settings", Context.MODE_PRIVATE);
 
         initAudioEffects();
-        setupBassBoost();
-        setupVirtualizer();
         setupEqualizerBands();
+        setupSwitches();
     }
 
     private void initAudioEffects() {
         try {
-            // Conecta con la sesión de audio global (0) del sistema
             mEqualizer = new Equalizer(0, 0);
             mEqualizer.setEnabled(true);
 
-            mBassBoost = new BassBoost(0, 0);
-            mBassBoost.setEnabled(true);
-
             mVirtualizer = new Virtualizer(0, 0);
             mVirtualizer.setEnabled(true);
+
+            mReverb = new EnvironmentalReverb(0, 0);
+            mReverb.setEnabled(true);
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    private void setupBassBoost() {
-        SeekBar seekBass = findViewById(R.id.seek_bass);
-        if (seekBass != null && mBassBoost != null) {
-            int savedBass = prefs.getInt("bass_level", 0);
-            seekBass.setProgress(savedBass);
-            
-            if (mBassBoost.getStrengthSupported()) {
-                mBassBoost.setStrength((short) savedBass);
-            }
-
-            seekBass.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                @Override
-                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                    if (fromUser && mBassBoost != null && mBassBoost.getStrengthSupported()) {
-                        mBassBoost.setStrength((short) progress);
-                        prefs.edit().putInt("bass_level", progress).apply();
-                    }
-                }
-
-                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-            });
-        }
-    }
-
-    private void setupVirtualizer() {
-        SeekBar seekSurround = findViewById(R.id.seek_surround);
-        if (seekSurround != null && mVirtualizer != null) {
-            int savedSurround = prefs.getInt("surround_level", 0);
-            seekSurround.setProgress(savedSurround);
-            
-            if (mVirtualizer.getStrengthSupported()) {
-                mVirtualizer.setStrength((short) savedSurround);
-            }
-
-            seekSurround.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                @Override
-                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                    if (fromUser && mVirtualizer != null && mVirtualizer.getStrengthSupported()) {
-                        mVirtualizer.setStrength((short) progress);
-                        prefs.edit().putInt("surround_level", progress).apply();
-                    }
-                }
-
-                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-            });
         }
     }
 
     private void setupEqualizerBands() {
         if (mEqualizer == null) return;
 
-        final short minEQLevel = mEqualizer.getBandLevelRange()[0];
-        final short maxEQLevel = mEqualizer.getBandLevelRange()[1];
+        final short minEQ = mEqualizer.getBandLevelRange()[0];
+        final short maxEQ = mEqualizer.getBandLevelRange()[1];
+        short numBands = mEqualizer.getNumberOfBands();
 
-        // Control de banda de ejemplo (62Hz)
-        SeekBar band62 = findViewById(R.id.band_62hz);
-        if (band62 != null) {
-            int savedBand = prefs.getInt("band_62", (maxEQLevel - minEQLevel) / 2);
-            band62.setMax(maxEQLevel - minEQLevel);
-            band62.setProgress(savedBand);
-            mEqualizer.setBandLevel((short) 0, (short) (savedBand + minEQLevel));
+        int[] bandIds = {
+            R.id.band_60, R.id.band_150, R.id.band_400,
+            R.id.band_1k, R.id.band_3k, R.id.band_8k, R.id.band_16k
+        };
 
-            band62.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        for (int i = 0; i < bandIds.length; i++) {
+            SeekBar seekBar = findViewById(bandIds[i]);
+            if (seekBar == null) continue;
+
+            final short bandIndex = (short) Math.min(i, numBands - 1);
+            int savedLevel = prefs.getInt("band_" + i, (maxEQ - minEQ) / 2);
+
+            seekBar.setMax(maxEQ - minEQ);
+            seekBar.setProgress(savedLevel);
+            mEqualizer.setBandLevel(bandIndex, (short) (savedLevel + minEQ));
+
+            final int index = i;
+            seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 @Override
-                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
                     if (fromUser && mEqualizer != null) {
-                        mEqualizer.setBandLevel((short) 0, (short) (progress + minEQLevel));
-                        prefs.edit().putInt("band_62", progress).apply();
+                        mEqualizer.setBandLevel(bandIndex, (short) (progress + minEQ));
+                        prefs.edit().putInt("band_" + index, progress).apply();
                     }
                 }
-
-                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStartTrackingTouch(SeekBar sb) {}
+                @Override public void onStopTrackingTouch(SeekBar sb) {}
             });
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        // Mantiene los efectos activos en segundo plano tras cerrar la interfaz
+    private void setupSwitches() {
+        // Switch Surround
+        Switch switchSurround = findViewById(R.id.switch_surround);
+        if (switchSurround != null) {
+            boolean isSurround = prefs.getBoolean("surround_on", false);
+            switchSurround.setChecked(isSurround);
+            if (mVirtualizer != null && mVirtualizer.getStrengthSupported()) {
+                mVirtualizer.setStrength((short) (isSurround ? 1000 : 0));
+            }
+
+            switchSurround.setOnCheckedChangeListener((cb, isChecked) -> {
+                if (mVirtualizer != null && mVirtualizer.getStrengthSupported()) {
+                    mVirtualizer.setStrength((short) (isChecked ? 1000 : 0));
+                    prefs.edit().putBoolean("surround_on", isChecked).apply();
+                }
+            });
+        }
+
+        // Switch Tube Amp Pro
+        Switch switchTube = findViewById(R.id.switch_tube);
+        if (switchTube != null) {
+            boolean isTube = prefs.getBoolean("tube_on", false);
+            switchTube.setChecked(isTube);
+
+            switchTube.setOnCheckedChangeListener((cb, isChecked) -> {
+                prefs.edit().putBoolean("tube_on", isChecked).apply();
+                if (mEqualizer != null) {
+                    short minEQ = mEqualizer.getBandLevelRange()[0];
+                    short maxEQ = mEqualizer.getBandLevelRange()[1];
+                    short mid = (short) ((maxEQ - minEQ) / 2 + minEQ);
+                    // Calidez analógica simulando tubo
+                    mEqualizer.setBandLevel((short) 0, (short) (isChecked ? maxEQ / 2 : mid));
+                }
+            });
+        }
+
+        // Switch Concert Hall
+        Switch switchConcert = findViewById(R.id.switch_concert);
+        if (switchConcert != null) {
+            boolean isConcert = prefs.getBoolean("concert_on", false);
+            switchConcert.setChecked(isConcert);
+            if (mReverb != null) {
+                mReverb.setDecayTime(isConcert ? 3000 : 0);
+            }
+
+            switchConcert.setOnCheckedChangeListener((cb, isChecked) -> {
+                if (mReverb != null) {
+                    mReverb.setDecayTime(isChecked ? 3000 : 0);
+                    prefs.edit().putBoolean("concert_on", isChecked).apply();
+                }
+            });
+        }
     }
 }
