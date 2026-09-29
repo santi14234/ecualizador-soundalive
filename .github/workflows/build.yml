@@ -23,7 +23,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Instalar Capacitor, Inyectar Puente Nativo y Permisos
+      - name: Instalar Capacitor, Inyectar Puente Nativo Seguro y Permisos
         run: |
           mkdir -p www
           cp index.html www/
@@ -33,10 +33,10 @@ jobs:
           npx cap add android
           npx cap sync android
 
-          # 1. Inyectar permisos de audio y ajustes del sistema
+          # 1. Inyectar permisos de audio y ajustes de sistema
           sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" \/>\n    <uses-permission android:name="android.permission.WRITE_SETTINGS" \/>' android/app/src/main/AndroidManifest.xml
 
-          # 2. Crear MainActivity.kt con el motor de ecualización nativo
+          # 2. Crear MainActivity.kt ultra seguro (protegido contra cierres)
           rm -f android/app/src/main/java/com/audio/soundalivelite/MainActivity.java
           cat << 'EOF' > android/app/src/main/java/com/audio/soundalivelite/MainActivity.kt
           package com.audio.soundalivelite
@@ -51,45 +51,51 @@ jobs:
               private var equalizer: Equalizer? = null
               private var presetReverb: PresetReverb? = null
 
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  
+              override fun onStart() {
+                  super.onStart()
+                  setupAudioBridge()
+              }
+
+              private fun setupAudioBridge() {
                   try {
-                      equalizer = Equalizer(0, 0).apply { enabled = true }
-                      presetReverb = PresetReverb(0, 0).apply { enabled = true }
+                      bridge?.webView?.addJavascriptInterface(object {
+                          @JavascriptInterface
+                          fun setBandGain(bandIndex: Int, gainMb: Int) {
+                              try {
+                                  if (equalizer == null) {
+                                      equalizer = Equalizer(0, 0).apply { enabled = true }
+                                  }
+                                  equalizer?.setBandLevel(bandIndex.toShort(), gainMb.toShort())
+                              } catch (e: Exception) {
+                                  e.printStackTrace()
+                              }
+                          }
+
+                          @JavascriptInterface
+                          fun setReverbPreset(preset: Int) {
+                              try {
+                                  if (presetReverb == null) {
+                                      presetReverb = PresetReverb(0, 0).apply { enabled = true }
+                                  }
+                                  if (preset == 0) {
+                                      presetReverb?.enabled = false
+                                  } else {
+                                      presetReverb?.enabled = true
+                                      presetReverb?.preset = preset.toShort()
+                                  }
+                              } catch (e: Exception) {
+                                  e.printStackTrace()
+                              }
+                          }
+                      }, "AndroidAudio")
                   } catch (e: Exception) {
                       e.printStackTrace()
                   }
-
-                  this.bridge.webView.addJavascriptInterface(object {
-                      @JavascriptInterface
-                      fun setBandGain(bandIndex: Int, gainMb: Int) {
-                          try {
-                              equalizer?.setBandLevel(bandIndex.toShort(), gainMb.toShort())
-                          } catch (e: Exception) {
-                              e.printStackTrace()
-                          }
-                      }
-
-                      @JavascriptInterface
-                      fun setReverbPreset(preset: Int) {
-                          try {
-                              if (preset == 0) {
-                                  presetReverb?.enabled = false
-                              } else {
-                                  presetReverb?.enabled = true
-                                  presetReverb?.preset = preset.toShort()
-                              }
-                          } catch (e: Exception) {
-                              e.printStackTrace()
-                          }
-                      }
-                  }, "AndroidAudio")
               }
           }
           EOF
 
-          # 3. Solución para dependencias duplicadas de Kotlin
+          # 3. Forzar dependencias estables de Kotlin
           cat << 'EOF' >> android/build.gradle
 
           allprojects {
